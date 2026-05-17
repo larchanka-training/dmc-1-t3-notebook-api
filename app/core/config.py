@@ -1,15 +1,25 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "MSD FastAPI Template"
-    app_env: str = "dev"
-    api_prefix: str = "/api/v1"
-    database_url: str = "postgresql+psycopg://admin:admin123@postgres:5432/wiki"
-    backend_cors_origins: Annotated[list[str], NoDecode] = Field(
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    PROJECT_NAME: str = "Enterprise Backend API"
+    VERSION: str = "1.0.0"
+    API_V1_STR: str = "/api/v1"
+
+    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    DATABASE_URL: str = "postgresql+psycopg://admin:admin123@postgres:5432/wiki"
+    BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
@@ -20,18 +30,20 @@ class Settings(BaseSettings):
         ]
     )
 
-    @field_validator("backend_cors_origins", mode="before")
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Any) -> Any:
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
 
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    """
+    Dependency provider for application configuration.
+    Injects settings via FastAPI Depends to prevent global state tight-coupling.
+    """
+    return settings
