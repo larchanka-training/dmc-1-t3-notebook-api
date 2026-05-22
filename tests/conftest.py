@@ -10,6 +10,10 @@ from sqlalchemy.pool import StaticPool
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret")
+os.environ.setdefault(
+    "BACKEND_CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+)
 
 from app.db.base import Base
 from app.db.session import get_db

@@ -1,3 +1,4 @@
+import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -149,7 +150,11 @@ def test_request_otp_rejects_invalid_email(client: TestClient) -> None:
 
 def test_google_start_returns_not_configured_without_credentials(
     client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "OAUTH_NAME_APPLICATION_ID", "")
+    monkeypatch.setattr(settings, "OAUTH_NAME_SECRET_KEY", "")
+
     response = client.get(
         f"{settings.API_V1_STR}/auth/google/start",
         follow_redirects=False,

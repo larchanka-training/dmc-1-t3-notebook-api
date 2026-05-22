@@ -22,9 +22,12 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(log_level=settings.LOG_LEVEL)
     logger.info("Application logging initialized.")
     logger.info(
-        "Starting application. Environment: %s, Version: %s",
+        "Starting application. Environment: %s, Version: %s, OTP delivery: %s",
         settings.ENVIRONMENT,
         settings.VERSION,
+        "dev_otp" if settings.expose_dev_otp else (
+            "email" if settings.OTP_EMAIL_DELIVERY_ENABLED else "unavailable"
+        ),
     )
 
     yield

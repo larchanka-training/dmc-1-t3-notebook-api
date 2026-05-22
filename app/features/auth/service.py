@@ -47,6 +47,11 @@ def user_to_summary(user: User) -> UserSummary:
     )
 
 
+def _google_email_verified(profile: dict) -> bool:
+    value = profile.get("email_verified")
+    return value is True or value == "true"
+
+
 class AuthService:
     def __init__(self, db: Session, settings: Settings) -> None:
         self.db = db
@@ -60,17 +65,25 @@ class AuthService:
         client_ip: str | None,
         background_tasks: BackgroundTasks,
     ) -> RequestOtpResponse:
+        if not self.settings.otp_delivery_available:
+            raise AppError(
+                code="otp_delivery_unavailable",
+                message="OTP delivery is not configured for this environment.",
+                status_code=503,
+            )
+
         normalized = normalize_email(email)
+        now = utc_now()
+        self._enforce_db_otp_request_rate_limit(email=normalized, now=now)
         self._enforce_rate_limit(
             limiter=otp_request_limiter,
-            keys=[f"otp-request:email:{normalized}", f"otp-request:ip:{client_ip or 'unknown'}"],
+            keys=[f"otp-request:ip:{client_ip or 'unknown'}"],
             limit=self.settings.OTP_REQUEST_RATE_LIMIT,
             window_seconds=self.settings.OTP_REQUEST_RATE_WINDOW_SECONDS,
             error_code="otp_request_rate_limited",
             message="Too many OTP requests. Try again later.",
         )
 
-        now = utc_now()
         existing = self.repo.get_active_otp_challenge_for_email(normalized)
         if existing is not None:
             self.repo.mark_otp_challenge_replaced(existing, now=now)
@@ -88,7 +101,7 @@ class AuthService:
         self.repo.create_otp_challenge(challenge)
         self.repo.commit()
 
-        if not self.settings.expose_dev_otp:
+        if self.settings.OTP_EMAIL_DELIVERY_ENABLED:
             background_tasks.add_task(send_otp_email, normalized, otp_code)
 
         logger.info(
@@ -112,14 +125,17 @@ class AuthService:
     ) -> VerifyOtpResponse:
         self._enforce_rate_limit(
             limiter=otp_verify_limiter,
-            keys=[f"otp-verify:challenge:{challenge_id}", f"otp-verify:ip:{client_ip or 'unknown'}"],
+            keys=[
+                f"otp-verify:challenge:{challenge_id}",
+                f"otp-verify:ip:{client_ip or 'unknown'}",
+            ],
             limit=self.settings.OTP_VERIFY_RATE_LIMIT,
             window_seconds=self.settings.OTP_VERIFY_RATE_WINDOW_SECONDS,
             error_code="otp_attempt_limit_exceeded",
             message="Too many OTP verification attempts. Try again later.",
         )
 
-        challenge = self.repo.get_otp_challenge(challenge_id)
+        challenge = self.repo.get_otp_challenge_for_update(challenge_id)
         if challenge is None:
             raise AppError(
                 code="otp_challenge_not_found",
@@ -163,7 +179,7 @@ class AuthService:
         )
 
     def get_session(self, *, request: Request) -> SessionResponse:
-        user = self._resolve_user_from_request(request)
+        user = self.resolve_user_from_request(request)
         if user is None:
             return SessionResponse(authenticated=False, user=None)
         return SessionResponse(authenticated=True, user=user_to_summary(user))
@@ -235,6 +251,10 @@ class AuthService:
             self.repo.rollback()
             return self._frontend_auth_error_redirect("oauth_provider_error")
 
+        if not _google_email_verified(profile):
+            self.repo.rollback()
+            return self._frontend_auth_error_redirect("oauth_email_unverified")
+
         provider_user_id = profile["sub"]
         email = normalize_email(profile.get("email", ""))
         if not email:
@@ -269,6 +289,22 @@ class AuthService:
         self.repo.commit()
         return self.settings.FRONTEND_URL
 
+    def resolve_user_from_request(self, request: Request) -> User | None:
+        token = request.cookies.get(self.settings.SESSION_COOKIE_NAME)
+        if not token:
+            return None
+
+        token_hash = hash_value(token, secret=self.settings.SESSION_SECRET_KEY)
+        session = self.repo.get_session_by_token_hash(token_hash)
+        if session is None:
+            return None
+
+        now = utc_now()
+        if session.revoked_at is not None or as_utc_aware(session.expires_at) <= now:
+            return None
+
+        return self.repo.get_user_by_id(session.user_id)
+
     def _establish_session(
         self,
         *,
@@ -292,22 +328,6 @@ class AuthService:
         )
         return now
 
-    def _resolve_user_from_request(self, request: Request) -> User | None:
-        token = request.cookies.get(self.settings.SESSION_COOKIE_NAME)
-        if not token:
-            return None
-
-        token_hash = hash_value(token, secret=self.settings.SESSION_SECRET_KEY)
-        session = self.repo.get_session_by_token_hash(token_hash)
-        if session is None:
-            return None
-
-        now = utc_now()
-        if session.revoked_at is not None or as_utc_aware(session.expires_at) <= now:
-            return None
-
-        return self.repo.get_user_by_id(session.user_id)
-
     def _validate_otp_challenge_state(self, challenge: OtpChallenge, *, now: datetime) -> None:
         if challenge.consumed_at is not None or challenge.replaced_at is not None:
             raise AppError(
@@ -328,6 +348,18 @@ class AuthService:
                 status_code=429,
             )
 
+    def _enforce_db_otp_request_rate_limit(self, *, email: str, now: datetime) -> None:
+        window_seconds = self.settings.OTP_REQUEST_RATE_WINDOW_SECONDS
+        since = add_seconds(now, -window_seconds)
+        request_count = self.repo.count_otp_challenges_by_email_since(email, since=since)
+        if request_count >= self.settings.OTP_REQUEST_RATE_LIMIT:
+            raise AppError(
+                code="otp_request_rate_limited",
+                message="Too many OTP requests. Try again later.",
+                status_code=429,
+                retry_after_seconds=window_seconds,
+            )
+
     def _enforce_rate_limit(
         self,
         *,
@@ -345,6 +377,7 @@ class AuthService:
                     code=error_code,
                     message=message,
                     status_code=429,
+                    retry_after_seconds=result.retry_after_seconds,
                 )
 
     def _frontend_auth_error_redirect(self, code: str) -> str:

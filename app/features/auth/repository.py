@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.features.auth.models import AuthSession, OAuthAccount, OAuthState, OtpChallenge, User
@@ -25,6 +25,25 @@ class AuthRepository:
 
     def get_otp_challenge(self, challenge_id: str) -> OtpChallenge | None:
         return self.db.get(OtpChallenge, challenge_id)
+
+    def get_otp_challenge_for_update(self, challenge_id: str) -> OtpChallenge | None:
+        stmt = (
+            select(OtpChallenge)
+            .where(OtpChallenge.id == challenge_id)
+            .with_for_update()
+        )
+        return self.db.scalar(stmt)
+
+    def count_otp_challenges_by_email_since(self, email: str, *, since: datetime) -> int:
+        count = self.db.scalar(
+            select(func.count())
+            .select_from(OtpChallenge)
+            .where(
+                OtpChallenge.email == email,
+                OtpChallenge.created_at >= since,
+            )
+        )
+        return int(count or 0)
 
     def get_active_otp_challenge_for_email(self, email: str) -> OtpChallenge | None:
         stmt = (

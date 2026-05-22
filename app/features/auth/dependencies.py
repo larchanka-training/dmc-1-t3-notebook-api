@@ -17,10 +17,14 @@ def get_auth_service(
     return AuthService(db, settings)
 
 
-def get_client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+def get_client_ip(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> str | None:
+    if settings.TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     if request.client is not None:
         return request.client.host
     return None
@@ -30,7 +34,7 @@ def get_optional_user(
     request: Request,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> User | None:
-    return auth_service._resolve_user_from_request(request)
+    return auth_service.resolve_user_from_request(request)
 
 
 def require_authenticated_user(

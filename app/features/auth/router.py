@@ -17,6 +17,13 @@ from app.features.auth.service import AuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _redirect_with_response_cookies(url: str, response: Response) -> RedirectResponse:
+    redirect = RedirectResponse(url=url, status_code=302)
+    for cookie_header in response.headers.getlist("set-cookie"):
+        redirect.headers.append("set-cookie", cookie_header)
+    return redirect
+
+
 @router.post("/request-otp", response_model=RequestOtpResponse)
 def request_otp(
     body: RequestOtpBody,
@@ -85,4 +92,4 @@ def google_callback(
         error=error,
         response=response,
     )
-    return RedirectResponse(url=redirect_url, status_code=302)
+    return _redirect_with_response_cookies(redirect_url, response)
