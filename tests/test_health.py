@@ -35,10 +35,11 @@ def test_system_health_endpoint_returns_valid_payload(client: TestClient) -> Non
 
 
 def test_health_check_includes_cors_headers_for_allowed_origin(client: TestClient) -> None:
+    allowed_origin = settings.BACKEND_CORS_ORIGINS[0]
     response = client.get(
         f"{settings.API_V1_STR}/health",
-        headers={"Origin": "http://localhost:3000"},
+        headers={"Origin": allowed_origin},
     )
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-origin"] == allowed_origin
