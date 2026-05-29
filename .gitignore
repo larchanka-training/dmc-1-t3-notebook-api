@@ -2,4 +2,11 @@
 __pycache__/
 .pytest_cache/
 .env
+.env.test
 *.pyc
+
+# Test artifacts
+reports/
+.coverage
+.coverage.*
+htmlcov/
