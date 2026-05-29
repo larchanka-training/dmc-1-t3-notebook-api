@@ -64,9 +64,68 @@ API docs will be available at:
 
 ## Run tests
 
+See the [Tests](#tests) section below for the full guide. Quick start:
+
 ```bash
-pytest
+make test-unit          # default; fast; no Postgres needed
+make test-integration   # requires docker compose postgres + notebook_test DB
 ```
+
+## Tests
+
+### Quick commands
+
+    make test-unit          # default; ~seconds; no Postgres needed
+    make test-integration   # requires docker compose postgres + notebook_test DB
+    make test-all           # both, sequential
+
+Raw pytest equivalents:
+
+    pytest                                    # unit only (default)
+    pytest -m integration                     # integration only
+    pytest -m "unit or integration"           # both
+
+### Environment
+
+| Variable | Required for | Default source |
+|---|---|---|
+| `TEST_DATABASE_URL` | integration | `api/.env.test` (loaded by pytest-env) |
+
+Bring up Postgres and create the test database once:
+
+    docker compose up -d postgres
+    docker compose exec postgres psql -U admin -d postgres -c "CREATE DATABASE notebook_test;"
+
+### Naming conventions
+
+| Kind | Path |
+|---|---|
+| Unit test | `tests/unit/<module>/test_*.py` |
+| Integration test | `tests/integration/<feature>/test_*.py` |
+| Factory | `tests/factories.py` (or `tests/factories/<feature>.py`) |
+
+Directory placement automatically applies the correct marker — no decorator needed.
+
+### Fixtures (auto-available, no setup required)
+
+| Fixture | Scope | Purpose |
+|---|---|---|
+| `engine` | session | Async SQLAlchemy engine bound to `TEST_DATABASE_URL` |
+| `apply_migrations` | session | Runs `alembic upgrade head` once; gated on `-m integration` |
+| `db_session` | function | Async session with per-test transaction rollback (SAVEPOINT pattern) |
+| `client` | function | `httpx.AsyncClient` against the FastAPI app, with DB dependency overridden to share `db_session` |
+| `authenticated_client` | function | `client` with placeholder session cookie (TODO: real auth) |
+
+### Artifacts
+
+All reports are written to `api/reports/` (gitignored, overwritten each run):
+
+| File | Produced by |
+|---|---|
+| `junit-unit.xml` | `make test-unit` |
+| `coverage-unit.xml` | `make test-unit` |
+| `junit-integration.xml` | `make test-integration` |
+| `coverage-integration.xml` | `make test-integration` |
 
 ## How to extend
 
