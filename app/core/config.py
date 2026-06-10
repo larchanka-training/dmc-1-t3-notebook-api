@@ -29,20 +29,6 @@ class Settings(BaseSettings):
             "https://notebook.com:8443",
         ]
     )
-    AUTH_OTP_TTL_SECONDS: int = 300
-    AUTH_OTP_MAX_ATTEMPTS: int = 5
-    AUTH_OTP_REQUEST_COOLDOWN_SECONDS: int = 60
-    AUTH_OTP_CODE_LENGTH: int = 6
-    AUTH_OTP_HASH_SECRET: str = "development-auth-otp-secret"
-    AUTH_RETURN_DEV_OTP: bool = True
-
-    AUTH_SESSION_TTL_SECONDS: int = 60 * 60 * 24 * 30
-    AUTH_SESSION_COOKIE_NAME: str = "notebook_session"
-    AUTH_SESSION_COOKIE_SECURE: bool = True
-    AUTH_SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
-    AUTH_SESSION_COOKIE_PATH: str = "/"
-    AUTH_SESSION_COOKIE_DOMAIN: str | None = None
-    AUTH_SESSION_HASH_SECRET: str = "development-auth-session-secret"
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -50,10 +36,6 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
-
-    @property
-    def auth_dev_otp_enabled(self) -> bool:
-        return self.ENVIRONMENT == "development" and self.AUTH_RETURN_DEV_OTP
 
 
 settings = Settings()

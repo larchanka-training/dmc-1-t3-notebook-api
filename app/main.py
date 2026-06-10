@@ -4,13 +4,11 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.v1.router import api_v1_router
-from app.features.auth.errors import AuthError
 
 logger = logging.getLogger("app.main")
 
@@ -47,16 +45,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.exception_handler(AuthError)
-async def auth_error_exception_handler(
-    request: Request, exc: AuthError
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error": {"code": exc.code, "message": exc.message}},
-    )
 
 
 @app.middleware("http")

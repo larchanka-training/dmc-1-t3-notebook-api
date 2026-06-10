@@ -127,14 +127,12 @@ Response notes:
 
 - `dev_otp` must be returned only in explicitly allowed `local/dev` environments
 - production responses must not include `dev_otp`
-- response semantics must not reveal whether an internal user already exists for the provided email
 
 #### Validation Rules
 
 - email must be present
 - email must be normalized
 - email format must be valid
-- repeated requests for the same normalized email must follow one explicit policy: either replace the previous active challenge or return a controlled throttle response
 
 #### Error Cases
 
@@ -188,8 +186,6 @@ Additional behavior:
 
 - response must set the session cookie
 - successful verification must invalidate the OTP challenge
-- user resolution or creation should be based on the normalized email carried by the challenge
-- at most one request may successfully consume a given active challenge
 
 #### Error Cases
 
@@ -197,11 +193,6 @@ Additional behavior:
 - `401 Unauthorized` for invalid or expired OTP challenge
 - `409 Conflict` if the challenge is no longer valid because it was replaced or already consumed
 - `429 Too Many Requests` for attempt exhaustion or throttle violations
-
-Status mapping notes:
-
-- `otp_challenge_not_found` should be treated as `401 Unauthorized`
-- `replaced` and `consumed` challenge states should be treated as `409 Conflict`
 
 Recommended error codes:
 
@@ -261,12 +252,6 @@ Body:
 
 This endpoint should allow the frontend to bootstrap auth state without guessing from cookie visibility.
 
-Additional behavior:
-
-- anonymous requests must return the anonymous success shape instead of `401`
-- the endpoint should not create a new session or change auth state for an anonymous request
-- the endpoint should not extend session lifetime as a side effect unless that behavior is explicitly adopted by the backend implementation
-
 ### 6.2 `POST /api/v1/auth/logout`
 
 Invalidates the current session.
@@ -289,7 +274,6 @@ Additional behavior:
 
 - invalidate the backend-side session or equivalent token state
 - clear the session cookie in the response
-- repeated logout or logout with a missing/invalid session cookie should still resolve through a controlled success response
 
 ## 7. Google OAuth Endpoints
 
@@ -342,7 +326,6 @@ Recommended direction:
 
 - bounded lifetime
 - explicit rotation and invalidation strategy
-- use the same cookie attribute source of truth for session issuance and cookie clearing so logout reliably removes the browser cookie
 
 ### 8.2 Local Development
 
