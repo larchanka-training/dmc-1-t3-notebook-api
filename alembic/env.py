@@ -4,8 +4,6 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
-from app.db.base import Base
-from app.features.auth import models as auth_models  # noqa: F401
 
 config = context.config
 
@@ -19,7 +17,7 @@ _existing_url = config.get_main_option("sqlalchemy.url") or ""
 if not _existing_url or _existing_url.startswith("sqlite:///./alembic-placeholder"):
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-target_metadata = Base.metadata
+target_metadata = None
 
 
 def run_migrations_offline() -> None:
