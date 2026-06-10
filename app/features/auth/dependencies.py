@@ -1,49 +1,69 @@
-from typing import Annotated
+from __future__ import annotations
 
-from fastapi import Depends, Request
-from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.errors import AppError
 from app.db.session import get_db
-from app.features.auth.models import User
+from app.features.auth.cookies import read_auth_session_cookie
+from app.features.auth.repository import AuthRepository
 from app.features.auth.service import AuthService
+from app.features.auth.schemas import UserSummary
+from app.integrations.email_delivery import LoggingOtpDeliveryGateway, OtpDeliveryGateway
+
+
+def get_auth_repository(db: AsyncSession = Depends(get_db)) -> AuthRepository:
+    return AuthRepository(db)
+
+
+def get_otp_delivery_gateway() -> OtpDeliveryGateway:
+    return LoggingOtpDeliveryGateway()
 
 
 def get_auth_service(
-    db: Annotated[Session, Depends(get_db)],
-    settings: Annotated[Settings, Depends(get_settings)],
+    repository: AuthRepository = Depends(get_auth_repository),
+    settings: Settings = Depends(get_settings),
+    otp_delivery_gateway: OtpDeliveryGateway = Depends(get_otp_delivery_gateway),
 ) -> AuthService:
-    return AuthService(db, settings)
+    return AuthService(
+        repository=repository,
+        settings=settings,
+        otp_delivery_gateway=otp_delivery_gateway,
+    )
 
 
-def get_client_ip(
+def get_session_cookie_value(
     request: Request,
-    settings: Annotated[Settings, Depends(get_settings)],
+    settings: Settings = Depends(get_settings),
 ) -> str | None:
-    if settings.TRUST_PROXY_HEADERS:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-    if request.client is not None:
-        return request.client.host
-    return None
+    return read_auth_session_cookie(request, settings)
 
 
-def get_optional_user(
-    request: Request,
-    auth_service: Annotated[AuthService, Depends(get_auth_service)],
-) -> User | None:
-    return auth_service.resolve_user_from_request(request)
+async def get_optional_current_user(
+    session_token: str | None = Depends(get_session_cookie_value),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> UserSummary | None:
+    if session_token is None:
+        return None
 
-
-def require_authenticated_user(
-    user: Annotated[User | None, Depends(get_optional_user)],
-) -> User:
+    user = await auth_service.resolve_user_from_session_token(session_token)
     if user is None:
-        raise AppError(
-            code="unauthenticated",
-            message="Authentication is required.",
-            status_code=401,
+        return None
+
+    return UserSummary(
+        id=str(user.id),
+        email=user.email,
+        display_name=user.display_name,
+    )
+
+
+async def get_current_user(
+    user: UserSummary | None = Depends(get_optional_current_user),
+) -> UserSummary:
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
         )
     return user
+

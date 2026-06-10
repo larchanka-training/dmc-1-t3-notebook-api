@@ -2,5 +2,15 @@
 __pycache__/
 .pytest_cache/
 .env
+.env.test
 *.pyc
-.idea
+
+# Test artifacts
+reports/
+.coverage
+.coverage.*
+htmlcov/
+
+# Generated build artifacts
+msd_fastapi_template.egg-info/
+*.egg-info/

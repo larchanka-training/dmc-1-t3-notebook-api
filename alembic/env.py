@@ -12,7 +12,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Respect a URL that was set by the caller (e.g. the test suite invoking
+# `command.upgrade(cfg, "head")` against TEST_DATABASE_URL). Only fall back
+# to the application settings when alembic.ini still holds the placeholder.
+_existing_url = config.get_main_option("sqlalchemy.url") or ""
+if not _existing_url or _existing_url.startswith("sqlite:///./alembic-placeholder"):
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 target_metadata = Base.metadata
 

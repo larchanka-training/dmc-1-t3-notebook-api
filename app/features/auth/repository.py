@@ -1,119 +1,129 @@
+from __future__ import annotations
+
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.auth.models import AuthSession, OAuthAccount, OAuthState, OtpChallenge, User
+from app.features.auth.models import OtpChallenge, Session, User
 
 
 class AuthRepository:
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
 
-    def get_user_by_email(self, email: str) -> User | None:
-        return self.db.scalar(select(User).where(User.email == email))
+    async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
+        return await self.session.get(User, user_id)
 
-    def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
-        return self.db.get(User, user_id)
+    async def get_user_by_email(self, email: str) -> User | None:
+        stmt = select(User).where(User.email == email)
+        return await self.session.scalar(stmt)
 
-    def create_user(self, *, email: str, now: datetime) -> User:
-        user = User(email=email, created_at=now, updated_at=now)
-        self.db.add(user)
-        self.db.flush()
+    async def create_user(
+        self,
+        *,
+        email: str,
+        display_name: str | None = None,
+    ) -> User:
+        user = User(email=email, display_name=display_name)
+        self.session.add(user)
+        await self.session.flush()
         return user
 
-    def get_otp_challenge(self, challenge_id: str) -> OtpChallenge | None:
-        return self.db.get(OtpChallenge, challenge_id)
+    async def get_recent_active_challenge_for_email(
+        self,
+        *,
+        email: str,
+        cooldown_seconds: int,
+    ) -> OtpChallenge | None:
+        now = datetime.now(UTC)
+        stmt = (
+            select(OtpChallenge)
+            .where(OtpChallenge.email == email)
+            .where(OtpChallenge.consumed_at.is_(None))
+            .where(OtpChallenge.expires_at > now)
+            .where(OtpChallenge.created_at >= now - timedelta(seconds=cooldown_seconds))
+            .order_by(OtpChallenge.created_at.desc())
+            .limit(1)
+        )
+        return await self.session.scalar(stmt)
 
-    def get_otp_challenge_for_update(self, challenge_id: str) -> OtpChallenge | None:
+    async def create_otp_challenge(
+        self,
+        *,
+        email: str,
+        otp_code_hash: str,
+        expires_at: datetime,
+        max_attempts: int,
+    ) -> OtpChallenge:
+        challenge = OtpChallenge(
+            email=email,
+            otp_code_hash=otp_code_hash,
+            expires_at=expires_at,
+            max_attempts=max_attempts,
+        )
+        self.session.add(challenge)
+        await self.session.flush()
+        return challenge
+
+    async def get_otp_challenge_by_id(self, challenge_id: uuid.UUID) -> OtpChallenge | None:
+        return await self.session.get(OtpChallenge, challenge_id)
+
+    async def get_otp_challenge_by_id_for_update(
+        self, challenge_id: uuid.UUID
+    ) -> OtpChallenge | None:
         stmt = (
             select(OtpChallenge)
             .where(OtpChallenge.id == challenge_id)
             .with_for_update()
         )
-        return self.db.scalar(stmt)
+        return await self.session.scalar(stmt)
 
-    def count_otp_challenges_by_email_since(self, email: str, *, since: datetime) -> int:
-        count = self.db.scalar(
-            select(func.count())
-            .select_from(OtpChallenge)
-            .where(
-                OtpChallenge.email == email,
-                OtpChallenge.created_at >= since,
-            )
-        )
-        return int(count or 0)
-
-    def get_active_otp_challenge_for_email(self, email: str) -> OtpChallenge | None:
-        stmt = (
-            select(OtpChallenge)
-            .where(
-                OtpChallenge.email == email,
-                OtpChallenge.consumed_at.is_(None),
-                OtpChallenge.replaced_at.is_(None),
-            )
-            .order_by(OtpChallenge.created_at.desc())
-            .limit(1)
-        )
-        return self.db.scalar(stmt)
-
-    def create_otp_challenge(self, challenge: OtpChallenge) -> OtpChallenge:
-        self.db.add(challenge)
-        self.db.flush()
+    async def increment_otp_challenge_attempt_count(
+        self, challenge: OtpChallenge
+    ) -> OtpChallenge:
+        challenge.attempt_count += 1
+        await self.session.flush()
         return challenge
 
-    def mark_otp_challenge_replaced(self, challenge: OtpChallenge, *, now: datetime) -> None:
-        challenge.replaced_at = now
+    async def consume_otp_challenge(self, challenge: OtpChallenge) -> OtpChallenge:
+        challenge.consumed_at = datetime.now(UTC)
+        await self.session.flush()
+        return challenge
 
-    def mark_otp_challenge_consumed(self, challenge: OtpChallenge, *, now: datetime) -> None:
-        challenge.consumed_at = now
-
-    def increment_otp_attempt(self, challenge: OtpChallenge) -> None:
-        challenge.attempt_count += 1
-        self.db.flush()
-
-    def create_session(self, session: AuthSession) -> AuthSession:
-        self.db.add(session)
-        self.db.flush()
-        return session
-
-    def get_session_by_token_hash(self, token_hash: str) -> AuthSession | None:
-        return self.db.scalar(
-            select(AuthSession).where(AuthSession.token_hash == token_hash)
+    async def create_session(
+        self,
+        *,
+        user_id: uuid.UUID,
+        session_token_hash: str,
+        expires_at: datetime,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> Session:
+        auth_session = Session(
+            user_id=user_id,
+            session_token_hash=session_token_hash,
+            expires_at=expires_at,
+            ip_address=ip_address,
+            user_agent=user_agent,
         )
+        self.session.add(auth_session)
+        await self.session.flush()
+        return auth_session
 
-    def revoke_session(self, session: AuthSession, *, now: datetime) -> None:
-        session.revoked_at = now
-
-    def create_oauth_state(self, oauth_state: OAuthState) -> OAuthState:
-        self.db.add(oauth_state)
-        self.db.flush()
-        return oauth_state
-
-    def get_oauth_state(self, state: str) -> OAuthState | None:
-        return self.db.get(OAuthState, state)
-
-    def consume_oauth_state(self, oauth_state: OAuthState, *, now: datetime) -> None:
-        oauth_state.consumed_at = now
-
-    def get_oauth_account(
-        self, *, provider: str, provider_user_id: str
-    ) -> OAuthAccount | None:
-        return self.db.scalar(
-            select(OAuthAccount).where(
-                OAuthAccount.provider == provider,
-                OAuthAccount.provider_user_id == provider_user_id,
-            )
+    async def get_active_session_by_token_hash(self, token_hash: str) -> Session | None:
+        now = datetime.now(UTC)
+        stmt = (
+            select(Session)
+            .where(Session.session_token_hash == token_hash)
+            .where(Session.revoked_at.is_(None))
+            .where(Session.expires_at > now)
+            .limit(1)
         )
+        return await self.session.scalar(stmt)
 
-    def create_oauth_account(self, account: OAuthAccount) -> OAuthAccount:
-        self.db.add(account)
-        self.db.flush()
-        return account
-
-    def commit(self) -> None:
-        self.db.commit()
-
-    def rollback(self) -> None:
-        self.db.rollback()
+    async def revoke_session(self, auth_session: Session) -> Session:
+        auth_session.revoked_at = datetime.now(UTC)
+        await self.session.flush()
+        return auth_session
