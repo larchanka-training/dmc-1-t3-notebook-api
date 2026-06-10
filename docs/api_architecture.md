@@ -26,15 +26,17 @@ The following backend decisions are fixed for Version 1:
 5. Shared backend structure is organized into `core`, `db`, `integrations`, and `features`.
 6. Notebook content is stored in `PostgreSQL` as a `JSONB` snapshot.
 7. Durable notebook metadata includes `id`, `owner_id`, `title`, `revision`, `created_at`, and `updated_at`.
-8. Runtime outputs are not stored as durable notebook state by default.
-9. Synchronization uses whole-notebook snapshots with revision-based conflict detection and `409 Conflict`.
-10. Authentication supports `Email + OTP` and `Google OAuth`.
-11. Authenticated browser state uses a backend-managed secure `HTTP-only` session cookie.
-12. In `local/dev`, OTP may be returned in the API response instead of using external email delivery.
-13. AI code generation uses one block-oriented endpoint.
-14. The data access layer uses `SQLAlchemy ORM`.
-15. Database migrations use `Alembic`.
-16. Version 1 uses `FastAPI BackgroundTasks` where background work is needed and does not introduce a dedicated job queue.
+8. The canonical notebook snapshot includes notebook-level `tags` and block-level `meta.tags` for both `text` and `code` blocks.
+9. Notebook retrieval and sync responses return these tag lists as part of the notebook payload.
+10. Runtime outputs are not stored as durable notebook state by default.
+11. Synchronization uses whole-notebook snapshots with revision-based conflict detection and `409 Conflict`.
+12. Authentication supports `Email + OTP` and `Google OAuth`.
+13. Authenticated browser state uses a backend-managed secure `HTTP-only` session cookie.
+14. In `local/dev`, OTP may be returned in the API response instead of using external email delivery.
+15. AI code generation uses one block-oriented endpoint.
+16. The data access layer uses `SQLAlchemy ORM`.
+17. Database migrations use `Alembic`.
+18. Version 1 uses `FastAPI BackgroundTasks` where background work is needed and does not introduce a dedicated job queue.
 
 ## 3. Backend Role in the System
 
@@ -324,11 +326,14 @@ The backend stores:
 - notebook identity
 - notebook ownership
 - notebook title
+- notebook-level `tags`
 - notebook content as structured `JSONB`
 - revision metadata
 - created and updated timestamps
 
 The backend does not decompose notebook blocks into a large multi-table block graph for Version 1.
+
+Block-level tags remain part of the snapshot inside each block `meta` object.
 
 ## 11. Synchronization Model
 

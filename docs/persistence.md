@@ -122,12 +122,16 @@ The backend should persist the document shape close to the frontend canonical mo
 {
   "id": "7e7c6d72-124d-40db-8c03-42f0eab1f451",
   "title": "Notebook title",
+  "tags": ["reference", "demo"],
   "blocks": [
     {
       "id": "block-1",
       "type": "text",
       "content": {
         "markdown": "# Heading"
+      },
+      "meta": {
+        "tags": ["intro", "summary"]
       }
     },
     {
@@ -136,6 +140,9 @@ The backend should persist the document shape close to the frontend canonical mo
       "content": {
         "language": "javascript",
         "source": "const value = 1;"
+      },
+      "meta": {
+        "tags": ["example", "javascript"]
       }
     }
   ],
@@ -149,6 +156,8 @@ The backend should persist the document shape close to the frontend canonical mo
 
 - `blocks` order is canonical and significant
 - allowed block types are only `text` and `code`
+- notebook root includes `tags` as a list of strings
+- every block includes `meta.tags` as a list of strings regardless of block type
 - `code` blocks use `javascript`
 - execution outputs are not stored in the durable snapshot by default
 - runtime session state is not part of notebook persistence
@@ -220,7 +229,19 @@ Used for retrieval and sync responses:
   "content_snapshot": {
     "id": "7e7c6d72-124d-40db-8c03-42f0eab1f451",
     "title": "Notebook title",
-    "blocks": [],
+    "tags": ["reference", "demo"],
+    "blocks": [
+      {
+        "id": "block-1",
+        "type": "text",
+        "content": {
+          "markdown": "# Heading"
+        },
+        "meta": {
+          "tags": ["intro", "summary"]
+        }
+      }
+    ],
     "metadata": {
       "version": 1
     }
@@ -285,6 +306,7 @@ Creates a notebook owned by the authenticated user.
   "title": "New notebook",
   "content_snapshot": {
     "title": "New notebook",
+    "tags": [],
     "blocks": [],
     "metadata": {
       "version": 1
@@ -350,7 +372,20 @@ Writes the new canonical notebook snapshot if the revision check passes.
   "content_snapshot": {
     "id": "7e7c6d72-124d-40db-8c03-42f0eab1f451",
     "title": "Notebook title",
-    "blocks": [],
+    "tags": ["reference", "demo"],
+    "blocks": [
+      {
+        "id": "block-2",
+        "type": "code",
+        "content": {
+          "language": "javascript",
+          "source": "const value = 1;"
+        },
+        "meta": {
+          "tags": ["example", "javascript"]
+        }
+      }
+    ],
     "metadata": {
       "version": 1
     }
@@ -374,7 +409,20 @@ Body:
   "content_snapshot": {
     "id": "7e7c6d72-124d-40db-8c03-42f0eab1f451",
     "title": "Notebook title",
-    "blocks": [],
+    "tags": ["reference", "demo"],
+    "blocks": [
+      {
+        "id": "block-2",
+        "type": "code",
+        "content": {
+          "language": "javascript",
+          "source": "const value = 1;"
+        },
+        "meta": {
+          "tags": ["example", "javascript"]
+        }
+      }
+    ],
     "metadata": {
       "version": 1
     }
@@ -439,6 +487,8 @@ At minimum, backend should validate:
 - `blocks` is an array
 - block identifiers are present
 - block type is one of allowed Version 1 types
+- notebook `tags` is a list of strings
+- every block contains `meta.tags` as a list of strings
 - `text` blocks have expected text content shape
 - `code` blocks have expected code content shape
 - notebook `id` consistency if included
