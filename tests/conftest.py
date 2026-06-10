@@ -15,6 +15,7 @@ import asyncio
 import os
 import re
 from collections.abc import AsyncGenerator
+from collections.abc import Awaitable, Callable
 
 import httpx
 import pytest
@@ -171,7 +172,8 @@ async def client(
         async with LifespanManager(app):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
-                base_url="http://testserver",
+                # Use HTTPS so Secure auth cookies participate in integration flows.
+                base_url="https://testserver",
             ) as ac:
                 yield ac
     finally:
@@ -179,26 +181,45 @@ async def client(
 
 
 # ---------------------------------------------------------------------------
-# Authenticated user stub — replaced once real auth lands.
+# Shared auth fixtures for protected endpoint integration tests.
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def authenticate(
+    client: httpx.AsyncClient,
+) -> Callable[[str | None], Awaitable["AuthenticatedTestContext"]]:
+    """Return a helper that authenticates the shared client via OTP flow."""
+    from tests.auth_helpers import AuthenticatedTestContext, authenticate_via_email_otp
+
+    async def _authenticate(email: str | None = None) -> AuthenticatedTestContext:
+        return await authenticate_via_email_otp(client, email=email)
+
+    return _authenticate
+
+
+@pytest_asyncio.fixture
+async def authenticated_context(
+    authenticate: Callable[[str | None], Awaitable["AuthenticatedTestContext"]],
+) -> "AuthenticatedTestContext":
+    """Authenticated test context backed by the real OTP -> session flow."""
+    return await authenticate()
 
 
 @pytest_asyncio.fixture
 async def authenticated_client(
-    client: httpx.AsyncClient,
-) -> AsyncGenerator[httpx.AsyncClient, None]:
-    """
-    HTTP client with authentication context applied.
+    authenticated_context: "AuthenticatedTestContext",
+) -> httpx.AsyncClient:
+    """HTTP client with a real backend-issued session cookie."""
+    return authenticated_context.client
 
-    Skips the test explicitly until real auth is implemented — prevents silent
-    false-positives from an unauthenticated session cookie placeholder.
-    TODO(auth): replace with real session-cookie issuance (see api/docs/auth.md).
-    """
-    pytest.skip(
-        "authenticated_client requires real auth implementation — "
-        "see api/docs/auth.md"
-    )
-    yield client  # unreachable; kept for type inference
+
+@pytest.fixture
+def authenticated_user(
+    authenticated_context: "AuthenticatedTestContext",
+) -> dict[str, object]:
+    """Authenticated user summary associated with `authenticated_client`."""
+    return authenticated_context.user
 
 
 # ---------------------------------------------------------------------------
