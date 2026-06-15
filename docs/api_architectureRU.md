@@ -26,15 +26,17 @@
 5. Общая backend-структура организована через `core`, `db`, `integrations` и `features`.
 6. Контент notebook хранится в `PostgreSQL` как `JSONB` snapshot.
 7. Долговременные notebook-метаданные включают `id`, `owner_id`, `title`, `revision`, `created_at` и `updated_at`.
-8. Runtime outputs по умолчанию не хранятся как durable notebook-state.
-9. Синхронизация использует snapshot целого notebook, revision-based conflict detection и `409 Conflict`.
-10. Аутентификация поддерживает `Email + OTP` и `Google OAuth`.
-11. Аутентифицированное browser-state использует backend-managed secure `HTTP-only` session cookie.
-12. В `local/dev` OTP может возвращаться прямо в API response вместо внешней email-доставки.
-13. AI-генерация кода использует один block-oriented endpoint.
-14. Data access layer использует `SQLAlchemy ORM`.
-15. Миграции базы данных используют `Alembic`.
-16. Version 1 использует `FastAPI BackgroundTasks` там, где нужен background work, и не вводит отдельную job queue.
+8. Канонический notebook snapshot включает notebook-level `tags` и block-level `meta.tags` как для `text`, так и для `code` блоков.
+9. Notebook retrieval и sync responses возвращают эти списки тегов как часть notebook payload.
+10. Runtime outputs по умолчанию не хранятся как durable notebook-state.
+11. Синхронизация использует snapshot целого notebook, revision-based conflict detection и `409 Conflict`.
+12. Аутентификация поддерживает `Email + OTP` и `Google OAuth`.
+13. Аутентифицированное browser-state использует backend-managed secure `HTTP-only` session cookie.
+14. В `local/dev` OTP может возвращаться прямо в API response вместо внешней email-доставки.
+15. AI-генерация кода использует один block-oriented endpoint.
+16. Data access layer использует `SQLAlchemy ORM`.
+17. Миграции базы данных используют `Alembic`.
+18. Version 1 использует `FastAPI BackgroundTasks` там, где нужен background work, и не вводит отдельную job queue.
 
 ## 3. Роль Backend в системе
 
@@ -324,11 +326,14 @@ Backend хранит:
 - identity notebook
 - ownership notebook
 - заголовок notebook
+- notebook-level `tags`
 - notebook-content как структурированный `JSONB`
 - revision-метаданные
 - timestamps создания и обновления
 
 Backend не раскладывает notebook-блоки в большой multi-table block graph в Version 1.
+
+Block-level теги остаются частью snapshot внутри `meta` каждого блока.
 
 ## 11. Модель синхронизации
 
