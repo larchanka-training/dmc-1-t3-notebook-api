@@ -82,3 +82,29 @@ class NotebookService:
     async def list_summaries(self, owner_id: uuid.UUID) -> list[NotebookSummary]:
         notebooks = await self.repository.list_for_owner(owner_id)
         return [build_notebook_summary(notebook) for notebook in notebooks]
+
+    async def get(
+        self, *, owner_id: uuid.UUID, notebook_id: uuid.UUID
+    ) -> NotebookResponse | None:
+        notebook = await self.repository.get_owned(
+            notebook_id=notebook_id, owner_id=owner_id
+        )
+        return build_notebook_response(notebook) if notebook is not None else None
+
+    async def rename(
+        self, *, owner_id: uuid.UUID, notebook_id: uuid.UUID, title: str
+    ) -> NotebookResponse | None:
+        notebook = await self.repository.get_owned(
+            notebook_id=notebook_id, owner_id=owner_id
+        )
+        if notebook is None:
+            return None
+        aligned = align_snapshot(
+            validate_snapshot(notebook.content_snapshot),
+            notebook_id=notebook.id,
+            title=title,
+        )
+        notebook = await self.repository.update(
+            notebook, title=title, content_snapshot=aligned.model_dump()
+        )
+        return build_notebook_response(notebook)

@@ -2,19 +2,24 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.features.auth.dependencies import get_current_user
 from app.features.auth.schemas import UserSummary
 from app.features.notebooks.dependencies import get_notebook_service
 from app.features.notebooks.schemas import (
     NotebookCreateRequest,
+    NotebookPatchRequest,
     NotebookResponse,
     NotebookSummary,
 )
 from app.features.notebooks.service import NotebookService
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
+
+NOTEBOOK_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found."
+)
 
 
 @router.post(
@@ -43,3 +48,44 @@ async def list_notebooks(
     service: NotebookService = Depends(get_notebook_service),
 ) -> list[NotebookSummary]:
     return await service.list_summaries(uuid.UUID(current_user.id))
+
+
+@router.get(
+    "/{notebook_id}",
+    response_model=NotebookResponse,
+    summary="Get one of the current user's notebooks",
+)
+async def get_notebook(
+    notebook_id: uuid.UUID,
+    current_user: UserSummary = Depends(get_current_user),
+    service: NotebookService = Depends(get_notebook_service),
+) -> NotebookResponse:
+    result = await service.get(
+        owner_id=uuid.UUID(current_user.id), notebook_id=notebook_id
+    )
+    if result is None:
+        raise NOTEBOOK_NOT_FOUND
+    return result
+
+
+@router.patch(
+    "/{notebook_id}",
+    response_model=NotebookResponse,
+    summary="Rename a notebook (metadata update)",
+)
+async def patch_notebook(
+    notebook_id: uuid.UUID,
+    payload: NotebookPatchRequest,
+    current_user: UserSummary = Depends(get_current_user),
+    service: NotebookService = Depends(get_notebook_service),
+) -> NotebookResponse:
+    owner_id = uuid.UUID(current_user.id)
+    if payload.title is not None:
+        result = await service.rename(
+            owner_id=owner_id, notebook_id=notebook_id, title=payload.title
+        )
+    else:
+        result = await service.get(owner_id=owner_id, notebook_id=notebook_id)
+    if result is None:
+        raise NOTEBOOK_NOT_FOUND
+    return result
