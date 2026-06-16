@@ -4,9 +4,12 @@ import uuid
 from typing import Any
 
 from app.features.notebooks.models import Notebook
+from app.features.notebooks.repository import NotebookRepository
 from app.features.notebooks.schemas import (
+    NotebookCreateRequest,
     NotebookResponse,
     NotebookSnapshot,
+    NotebookSummary,
 )
 
 
@@ -38,3 +41,44 @@ def build_notebook_response(notebook: Notebook) -> NotebookResponse:
         updated_at=notebook.updated_at,
         last_synced_at=notebook.last_synced_at,
     )
+
+
+def build_notebook_summary(notebook: Notebook) -> NotebookSummary:
+    """Build a list-item summary, sourcing tags from the stored snapshot."""
+    snapshot = validate_snapshot(notebook.content_snapshot)
+    return NotebookSummary(
+        id=notebook.id,
+        title=notebook.title,
+        tags=snapshot.tags,
+        revision=notebook.revision,
+        created_at=notebook.created_at,
+        updated_at=notebook.updated_at,
+    )
+
+
+class NotebookService:
+    """Owner-scoped notebook use cases over the repository."""
+
+    def __init__(self, repository: NotebookRepository) -> None:
+        self.repository = repository
+
+    async def create(
+        self, *, owner_id: uuid.UUID, payload: NotebookCreateRequest
+    ) -> NotebookResponse:
+        notebook = await self.repository.create(
+            owner_id=owner_id,
+            title=payload.title,
+            content_snapshot=payload.content_snapshot.model_dump(),
+            revision=1,
+        )
+        aligned = align_snapshot(
+            payload.content_snapshot, notebook_id=notebook.id, title=payload.title
+        )
+        notebook = await self.repository.update(
+            notebook, content_snapshot=aligned.model_dump()
+        )
+        return build_notebook_response(notebook)
+
+    async def list_summaries(self, owner_id: uuid.UUID) -> list[NotebookSummary]:
+        notebooks = await self.repository.list_for_owner(owner_id)
+        return [build_notebook_summary(notebook) for notebook in notebooks]

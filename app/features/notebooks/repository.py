@@ -32,6 +32,8 @@ class NotebookRepository:
         )
         self.session.add(notebook)
         await self.session.flush()
+        # Populate server-side defaults (timestamps) within the async context.
+        await self.session.refresh(notebook)
         return notebook
 
     async def get_by_id(self, notebook_id: uuid.UUID) -> Notebook | None:
@@ -72,6 +74,8 @@ class NotebookRepository:
         if last_synced_at is not None:
             notebook.last_synced_at = last_synced_at
         await self.session.flush()
+        # Refresh so `updated_at` (onupdate server default) is loaded eagerly.
+        await self.session.refresh(notebook)
         return notebook
 
     async def delete(self, notebook: Notebook) -> None:
