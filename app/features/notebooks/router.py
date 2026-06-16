@@ -68,6 +68,23 @@ async def get_notebook(
     return result
 
 
+@router.delete(
+    "/{notebook_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a notebook",
+)
+async def delete_notebook(
+    notebook_id: uuid.UUID,
+    current_user: UserSummary = Depends(get_current_user),
+    service: NotebookService = Depends(get_notebook_service),
+) -> None:
+    deleted = await service.delete(
+        owner_id=uuid.UUID(current_user.id), notebook_id=notebook_id
+    )
+    if not deleted:
+        raise NOTEBOOK_NOT_FOUND
+
+
 @router.patch(
     "/{notebook_id}",
     response_model=NotebookResponse,

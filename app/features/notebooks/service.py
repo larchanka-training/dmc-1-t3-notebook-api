@@ -108,3 +108,12 @@ class NotebookService:
             notebook, title=title, content_snapshot=aligned.model_dump()
         )
         return build_notebook_response(notebook)
+
+    async def delete(self, *, owner_id: uuid.UUID, notebook_id: uuid.UUID) -> bool:
+        notebook = await self.repository.get_owned(
+            notebook_id=notebook_id, owner_id=owner_id
+        )
+        if notebook is None:
+            return False
+        await self.repository.delete(notebook)
+        return True
