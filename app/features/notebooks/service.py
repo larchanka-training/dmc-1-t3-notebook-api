@@ -57,7 +57,16 @@ def build_notebook_summary(notebook: Notebook) -> NotebookSummary:
 
 
 class NotebookService:
-    """Owner-scoped notebook use cases over the repository."""
+    """Owner-scoped notebook use cases over the repository.
+
+    Revision / sync-readiness invariants (Version 1, see api/docs/persistence.md):
+    - a created notebook starts at ``revision = 1`` and ``last_synced_at = None``;
+    - metadata updates (rename) keep ``revision`` and ``last_synced_at`` untouched
+      and never emulate sync via ``base_revision``;
+    - ``revision``/timestamps are exposed on every response so a later
+      ``/notebooks/{id}/sync`` can build on this contract without changing the
+      stored snapshot shape.
+    """
 
     def __init__(self, repository: NotebookRepository) -> None:
         self.repository = repository
