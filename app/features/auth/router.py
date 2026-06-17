@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 
 from app.core.config import Settings, get_settings
-from app.features.auth.cookies import clear_auth_session_cookie, set_auth_session_cookie
+from app.features.auth.cookies import (
+    clear_auth_session_cookie,
+    clear_oauth_state_cookie,
+    read_oauth_state_cookie,
+    set_auth_session_cookie,
+    set_oauth_state_cookie,
+)
 from app.features.auth.dependencies import (
     get_auth_service,
     get_optional_current_user,
@@ -101,3 +108,53 @@ async def logout(
 
     clear_auth_session_cookie(response, settings)
     return LogoutResponse(logged_out=True)
+
+
+@router.get(
+    "/google/start",
+    status_code=status.HTTP_302_FOUND,
+    summary="Start the Google OAuth flow",
+)
+async def start_google_oauth(
+    auth_service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    result = await auth_service.start_google_oauth()
+    response = RedirectResponse(
+        url=result.authorization_url,
+        status_code=status.HTTP_302_FOUND,
+    )
+    set_oauth_state_cookie(response, result.nonce, settings)
+    return response
+
+
+@router.get(
+    "/google/callback",
+    status_code=status.HTTP_302_FOUND,
+    summary="Handle the Google OAuth callback",
+)
+async def google_oauth_callback(
+    request: Request,
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    auth_service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    result = await auth_service.handle_google_callback(
+        state=state,
+        state_cookie_nonce=read_oauth_state_cookie(request, settings),
+        code=code,
+        provider_error=error,
+        ip_address=request.client.host if request.client is not None else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    response = RedirectResponse(
+        url=result.redirect_url,
+        status_code=status.HTTP_302_FOUND,
+    )
+    clear_oauth_state_cookie(response, settings)
+    if hasattr(result, "session_token"):
+        set_auth_session_cookie(response, result.session_token, settings)
+    return response
