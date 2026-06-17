@@ -1,7 +1,7 @@
 """create notebook persistence table
 
-Revision ID: 20260616_0002
-Revises: 20260610_0001
+Revision ID: 20260617_0003
+Revises: 20260617_0002
 Create Date: 2026-06-16 00:02:00.000000
 """
 
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
-revision = "20260616_0002"
-down_revision = "20260610_0001"
+revision = "20260617_0003"
+down_revision = "20260617_0002"
 branch_labels = None
 depends_on = None
 
