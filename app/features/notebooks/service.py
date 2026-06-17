@@ -86,7 +86,11 @@ class NotebookService:
         notebook = await self.repository.update(
             notebook, content_snapshot=aligned.model_dump()
         )
-        return build_notebook_response(notebook)
+        # Build the response before committing: commit expires ORM attributes,
+        # and re-reading them would attempt lazy IO outside the async context.
+        response = build_notebook_response(notebook)
+        await self.repository.session.commit()
+        return response
 
     async def list_summaries(self, owner_id: uuid.UUID) -> list[NotebookSummary]:
         notebooks = await self.repository.list_for_owner(owner_id)
@@ -116,7 +120,9 @@ class NotebookService:
         notebook = await self.repository.update(
             notebook, title=title, content_snapshot=aligned.model_dump()
         )
-        return build_notebook_response(notebook)
+        response = build_notebook_response(notebook)
+        await self.repository.session.commit()
+        return response
 
     async def delete(self, *, owner_id: uuid.UUID, notebook_id: uuid.UUID) -> bool:
         notebook = await self.repository.get_owned(
@@ -125,4 +131,5 @@ class NotebookService:
         if notebook is None:
             return False
         await self.repository.delete(notebook)
+        await self.repository.session.commit()
         return True
