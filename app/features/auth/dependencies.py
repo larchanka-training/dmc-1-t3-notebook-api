@@ -10,6 +10,7 @@ from app.features.auth.repository import AuthRepository
 from app.features.auth.service import AuthService
 from app.features.auth.schemas import UserSummary
 from app.integrations.email_delivery import LoggingOtpDeliveryGateway, OtpDeliveryGateway
+from app.integrations.google_oauth.client import GoogleOAuthClient
 
 
 def get_auth_repository(db: AsyncSession = Depends(get_db)) -> AuthRepository:
@@ -20,15 +21,23 @@ def get_otp_delivery_gateway() -> OtpDeliveryGateway:
     return LoggingOtpDeliveryGateway()
 
 
+def get_google_oauth_client(
+    settings: Settings = Depends(get_settings),
+) -> GoogleOAuthClient:
+    return GoogleOAuthClient(settings)
+
+
 def get_auth_service(
     repository: AuthRepository = Depends(get_auth_repository),
     settings: Settings = Depends(get_settings),
     otp_delivery_gateway: OtpDeliveryGateway = Depends(get_otp_delivery_gateway),
+    google_oauth_client: GoogleOAuthClient = Depends(get_google_oauth_client),
 ) -> AuthService:
     return AuthService(
         repository=repository,
         settings=settings,
         otp_delivery_gateway=otp_delivery_gateway,
+        google_oauth_client=google_oauth_client,
     )
 
 
@@ -66,4 +75,3 @@ async def get_current_user(
             detail="Authentication required.",
         )
     return user
-

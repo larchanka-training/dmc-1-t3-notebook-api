@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.auth.models import OtpChallenge, Session, User
+from app.features.auth.models import OAuthAccount, OAuthState, OtpChallenge, Session, User
 
 
 class AuthRepository:
@@ -30,6 +30,67 @@ class AuthRepository:
         self.session.add(user)
         await self.session.flush()
         return user
+
+    async def get_oauth_account_by_provider_subject(
+        self,
+        *,
+        provider: str,
+        provider_subject: str,
+    ) -> OAuthAccount | None:
+        stmt = (
+            select(OAuthAccount)
+            .where(OAuthAccount.provider == provider)
+            .where(OAuthAccount.provider_subject == provider_subject)
+            .limit(1)
+        )
+        return await self.session.scalar(stmt)
+
+    async def create_oauth_account(
+        self,
+        *,
+        user_id: uuid.UUID,
+        provider: str,
+        provider_subject: str,
+        provider_email: str | None,
+    ) -> OAuthAccount:
+        oauth_account = OAuthAccount(
+            user_id=user_id,
+            provider=provider,
+            provider_subject=provider_subject,
+            provider_email=provider_email,
+        )
+        self.session.add(oauth_account)
+        await self.session.flush()
+        return oauth_account
+
+    async def create_oauth_state(
+        self,
+        *,
+        nonce: str,
+        flow: str,
+        expires_at: datetime,
+    ) -> OAuthState:
+        oauth_state = OAuthState(
+            nonce=nonce,
+            flow=flow,
+            expires_at=expires_at,
+        )
+        self.session.add(oauth_state)
+        await self.session.flush()
+        return oauth_state
+
+    async def get_oauth_state_by_nonce_for_update(self, nonce: str) -> OAuthState | None:
+        stmt = (
+            select(OAuthState)
+            .where(OAuthState.nonce == nonce)
+            .with_for_update()
+        )
+        return await self.session.scalar(stmt)
+
+    async def consume_oauth_state(self, oauth_state: OAuthState) -> OAuthState:
+        oauth_state.consumed_at = datetime.now(UTC)
+        await self.session.flush()
+        return oauth_state
 
     async def get_recent_active_challenge_for_email(
         self,

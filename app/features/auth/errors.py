@@ -48,3 +48,9 @@ class OtpChallengeConsumedError(AuthError):
     status_code = 409
     code = "otp_challenge_consumed"
     message = "The OTP challenge has already been used."
+
+
+class GoogleOAuthNotConfiguredError(AuthError):
+    status_code = 503
+    code = "google_oauth_not_configured"
+    message = "Google OAuth is not configured."
