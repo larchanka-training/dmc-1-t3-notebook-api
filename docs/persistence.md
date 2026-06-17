@@ -568,3 +568,18 @@ This document does not define:
 - export API
 
 Those can be defined later without changing the core persistence contract above.
+
+## 14. Implementation Status (Version 1 CRUD)
+
+Implemented under `app/features/notebooks` (JSNB-127, Layer A):
+
+- `POST/GET/GET{id}/PATCH{id}/DELETE{id} /api/v1/notebooks`, owner-only.
+- Inaccessible/foreign notebooks return **`404 Not Found`** (the `403` wording in
+  older/QA docs is superseded by this contract); anonymous requests return `401`.
+- Notebook root `tags` and every block `meta.tags` are returned on list and detail.
+- A created notebook starts at `revision = 1`, `last_synced_at = null`.
+- Rename is a metadata update: it re-aligns `content_snapshot.title` with the row
+  and does **not** change `revision` or `last_synced_at`.
+
+Deferred (Stage 6 sync, not implemented here): `POST /api/v1/notebooks/{id}/sync`,
+`base_revision` conflict handling, and `409 Conflict`.
