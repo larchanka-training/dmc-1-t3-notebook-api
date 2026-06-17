@@ -299,12 +299,20 @@ Starts the Google OAuth flow.
 
 Behavior:
 
-- generate and persist OAuth state
+- generate a backend-owned signed OAuth `state` payload
+- persist a server-side single-use OAuth state record
+- set a short-lived backend-issued OAuth state cookie
 - redirect the browser to Google authorization
 
 Response:
 
 - `302 Found` redirect to provider
+
+State contract:
+
+- the signed `state` payload must include at least `nonce`, `iat`, and a flow marker
+- the OAuth state cookie must be `HttpOnly`, `Secure`, `SameSite=Lax`, and path-scoped to the Google auth routes or narrower
+- callback validation must compare the signed payload against both the backend-issued cookie and the server-side single-use state record
 
 ### 7.2 `GET /api/v1/auth/google/callback`
 
@@ -316,6 +324,7 @@ Behavior:
 - resolve or create the user
 - establish the authenticated session
 - set the session cookie
+- clear temporary OAuth state artifacts
 - redirect the browser to the frontend application
 
 Response:
@@ -326,6 +335,24 @@ Error behavior:
 
 - invalid or missing state should result in a controlled auth error flow
 - do not leak raw provider failure details to the user
+- callback errors should redirect to a backend-configured frontend error URL with a stable short `code` query param
+
+Linking policy:
+
+- first resolve an existing OAuth account by `(provider, provider_subject)`
+- if no existing OAuth account is found, only auto-link or create a user when the Google identity contains a verified email
+- auto-link by email must reuse the existing internal user and then create the provider mapping
+
+Stable frontend-facing error codes:
+
+- `oauth_state_missing`
+- `oauth_state_invalid`
+- `oauth_state_expired`
+- `oauth_access_denied`
+- `oauth_provider_error`
+- `oauth_exchange_failed`
+- `oauth_identity_unverified`
+- `oauth_account_conflict`
 
 ## 8. Session Cookie Contract
 

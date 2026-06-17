@@ -193,6 +193,7 @@ The `auth` feature is responsible for:
 
 - email OTP request and verification
 - Google OAuth start and callback handling
+- OAuth state validation and verified-email account linking
 - authenticated session creation
 - authenticated session retrieval
 - logout
