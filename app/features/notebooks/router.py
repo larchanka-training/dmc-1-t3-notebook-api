@@ -13,6 +13,7 @@ from app.features.notebooks.schemas import (
     NotebookPatchRequest,
     NotebookResponse,
     NotebookSummary,
+    NotebookSyncConflictResponse,
     NotebookSyncRequest,
 )
 from app.features.notebooks.service import NotebookService, NotebookSyncConflict
@@ -113,6 +114,7 @@ async def patch_notebook(
 @router.post(
     "/{notebook_id}/sync",
     response_model=NotebookResponse,
+    responses={status.HTTP_409_CONFLICT: {"model": NotebookSyncConflictResponse}},
     summary="Sync (push) a notebook snapshot with an optimistic revision check",
 )
 async def sync_notebook(

@@ -100,3 +100,13 @@ class NotebookResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class SyncConflictErrorBody(BaseModel):
+    code: str
+    message: str
+
+
+class NotebookSyncConflictResponse(BaseModel):
+    error: SyncConflictErrorBody
+    server_revision: int
