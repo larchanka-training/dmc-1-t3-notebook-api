@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 
 from app.features.auth.dependencies import get_current_user
 from app.features.auth.schemas import UserSummary
@@ -12,8 +13,9 @@ from app.features.notebooks.schemas import (
     NotebookPatchRequest,
     NotebookResponse,
     NotebookSummary,
+    NotebookSyncRequest,
 )
-from app.features.notebooks.service import NotebookService
+from app.features.notebooks.service import NotebookService, NotebookSyncConflict
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
 
@@ -105,4 +107,36 @@ async def patch_notebook(
         result = await service.get(owner_id=owner_id, notebook_id=notebook_id)
     if result is None:
         raise NOTEBOOK_NOT_FOUND
+    return result
+
+
+@router.post(
+    "/{notebook_id}/sync",
+    response_model=NotebookResponse,
+    summary="Sync (push) a notebook snapshot with an optimistic revision check",
+)
+async def sync_notebook(
+    notebook_id: uuid.UUID,
+    payload: NotebookSyncRequest,
+    current_user: UserSummary = Depends(get_current_user),
+    service: NotebookService = Depends(get_notebook_service),
+):
+    result = await service.sync(
+        owner_id=uuid.UUID(current_user.id),
+        notebook_id=notebook_id,
+        payload=payload,
+    )
+    if result is None:
+        raise NOTEBOOK_NOT_FOUND
+    if isinstance(result, NotebookSyncConflict):
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "error": {
+                    "code": "notebook_sync_conflict",
+                    "message": "The notebook was updated on the server.",
+                },
+                "server_revision": result.server_revision,
+            },
+        )
     return result
