@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from app.features.notebooks.models import Notebook
@@ -10,7 +12,15 @@ from app.features.notebooks.schemas import (
     NotebookResponse,
     NotebookSnapshot,
     NotebookSummary,
+    NotebookSyncRequest,
 )
+
+
+@dataclass
+class NotebookSyncConflict:
+    """Returned by NotebookService.sync when base_revision is stale."""
+
+    server_revision: int
 
 
 def validate_snapshot(raw: dict[str, Any]) -> NotebookSnapshot:
@@ -133,3 +143,34 @@ class NotebookService:
         await self.repository.delete(notebook)
         await self.repository.session.commit()
         return True
+
+    async def sync(
+        self,
+        *,
+        owner_id: uuid.UUID,
+        notebook_id: uuid.UUID,
+        payload: NotebookSyncRequest,
+    ) -> NotebookResponse | NotebookSyncConflict | None:
+        notebook = await self.repository.get_owned(
+            notebook_id=notebook_id, owner_id=owner_id
+        )
+        if notebook is None:
+            return None
+        if payload.base_revision != notebook.revision:
+            return NotebookSyncConflict(server_revision=notebook.revision)
+
+        aligned = align_snapshot(
+            payload.content_snapshot,
+            notebook_id=notebook.id,
+            title=payload.content_snapshot.title,
+        )
+        notebook = await self.repository.update(
+            notebook,
+            title=payload.content_snapshot.title,
+            content_snapshot=aligned.model_dump(),
+            revision=notebook.revision + 1,
+            last_synced_at=datetime.now(UTC),
+        )
+        response = build_notebook_response(notebook)
+        await self.repository.session.commit()
+        return response

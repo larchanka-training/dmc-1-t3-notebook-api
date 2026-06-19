@@ -67,6 +67,11 @@ class NotebookCreateRequest(BaseModel):
     content_snapshot: NotebookSnapshot
 
 
+class NotebookSyncRequest(BaseModel):
+    base_revision: int
+    content_snapshot: NotebookSnapshot
+
+
 class NotebookPatchRequest(BaseModel):
     title: str | None = None
 
@@ -95,3 +100,13 @@ class NotebookResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class SyncConflictErrorBody(BaseModel):
+    code: str
+    message: str
+
+
+class NotebookSyncConflictResponse(BaseModel):
+    error: SyncConflictErrorBody
+    server_revision: int

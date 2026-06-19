@@ -104,3 +104,24 @@ def test_create_request_requires_title_and_snapshot() -> None:
 def test_patch_request_allows_optional_title() -> None:
     assert NotebookPatchRequest.model_validate({}).title is None
     assert NotebookPatchRequest.model_validate({"title": "R"}).title == "R"
+
+
+def test_sync_request_requires_base_revision_and_snapshot() -> None:
+    from app.features.notebooks.schemas import NotebookSyncRequest
+
+    req = NotebookSyncRequest.model_validate(
+        {
+            "base_revision": 3,
+            "content_snapshot": {
+                "title": "T",
+                "tags": [],
+                "blocks": [],
+                "metadata": {"version": 1},
+            },
+        }
+    )
+    assert req.base_revision == 3
+    assert req.content_snapshot.title == "T"
+
+    with pytest.raises(ValidationError):
+        NotebookSyncRequest.model_validate({"base_revision": 3})
