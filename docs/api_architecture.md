@@ -259,6 +259,10 @@ Canonical AI route:
 
 - `POST /api/v1/ai/code-blocks/generate`
 
+The canonical Version 1 request, success response, normalized error catalog, and retryability semantics for this route are defined in:
+
+- `./ai_contract.md`
+
 This endpoint accepts:
 
 - generation mode

@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_REDIRECT_URI: str = "https://api.notebook.com:8443/api/v1/auth/google/callback"
     GOOGLE_OAUTH_SUCCESS_REDIRECT_URL: str = "https://notebook.com:8443/"
     GOOGLE_OAUTH_ERROR_REDIRECT_URL: str = "https://notebook.com:8443/auth/error"
+    AI_PROVIDER_NAME: Literal["bedrock"] = "bedrock"
+    AI_PROVIDER_MODEL: str = "anthropic.claude-3-haiku"
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod

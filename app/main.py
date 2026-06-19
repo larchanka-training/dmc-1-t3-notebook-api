@@ -4,12 +4,20 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.api.v1.router import api_v1_router
+from app.features.ai.errors import (
+    AiRouteError,
+    ai_json_response,
+    build_ai_invalid_request_response,
+    is_ai_generate_request,
+)
 from app.features.auth.errors import AuthError
 
 logger = logging.getLogger("app.main")
@@ -57,6 +65,22 @@ async def auth_error_exception_handler(
         status_code=exc.status_code,
         content={"error": {"code": exc.code, "message": exc.message}},
     )
+
+
+@app.exception_handler(AiRouteError)
+async def ai_route_error_exception_handler(
+    request: Request, exc: AiRouteError
+) -> JSONResponse:
+    return ai_json_response(exc.payload, exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    if is_ai_generate_request(request):
+        return build_ai_invalid_request_response()
+    return await request_validation_exception_handler(request, exc)
 
 
 @app.middleware("http")
