@@ -114,7 +114,7 @@ class AuthService:
         return OtpRequestResult(
             challenge_id=str(challenge.id),
             expires_in_seconds=expires_in_seconds,
-            dev_otp=otp_code if self.settings.auth_dev_otp_enabled else None,
+            dev_otp=otp_code if (self.settings.auth_dev_otp_enabled or self.settings.AUTH_DEBUG_MODE) else None,
         )
 
     async def get_or_create_user(self, *, email: str) -> User:
