@@ -40,9 +40,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 async def request_otp(
     payload: RequestOtpRequest,
+    response: Response,
     auth_service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> RequestOtpResponse:
     result = await auth_service.request_otp(email=payload.email)
+    if settings.AUTH_DEBUG_MODE and result.dev_otp is not None:
+        response.headers["X-Debug-OTP"] = result.dev_otp
     return RequestOtpResponse(
         challenge_id=result.challenge_id,
         expires_in_seconds=result.expires_in_seconds,

@@ -1,7 +1,42 @@
+import os
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+
+def _load_aws_secret() -> None:
+    """
+    When AWS_APP_SECRET_ARN is present the application is running on AWS.
+    Fetch the single ini-format secret and inject every KEY=VALUE pair into
+    os.environ so that pydantic-settings picks them up with highest priority.
+    Values already set in the environment are not overwritten (setdefault).
+    """
+    secret_arn = os.environ.get("AWS_APP_SECRET_ARN")
+    if not secret_arn:
+        return
+
+    import boto3  # lazy import – not required for local development
+
+    client = boto3.client("secretsmanager")
+    response = client.get_secret_value(SecretId=secret_arn)
+    secret_text: str = response["SecretString"]
+
+    for raw_line in secret_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        # Strip optional surrounding quotes
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_aws_secret()
 
 
 class Settings(BaseSettings):
@@ -17,6 +52,7 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    GIT_BRANCH: str = "unknown"
 
     DATABASE_URL: str = "postgresql+psycopg://admin:admin123@postgres:5432/wiki"
     BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
@@ -35,6 +71,7 @@ class Settings(BaseSettings):
     AUTH_OTP_CODE_LENGTH: int = 6
     AUTH_OTP_HASH_SECRET: str = "development-auth-otp-secret"
     AUTH_RETURN_DEV_OTP: bool = True
+    AUTH_DEBUG_MODE: bool = False
 
     AUTH_SESSION_TTL_SECONDS: int = 60 * 60 * 24 * 30
     AUTH_SESSION_COOKIE_NAME: str = "notebook_session"

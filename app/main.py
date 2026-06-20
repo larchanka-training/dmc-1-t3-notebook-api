@@ -102,6 +102,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:  
         response.status_code,
         duration_ms,
     )
+    response.headers["X-Git-Branch"] = settings.GIT_BRANCH
     return response
 
 
