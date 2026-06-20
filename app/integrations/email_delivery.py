@@ -45,18 +45,37 @@ class SesOtpDeliveryGateway(OtpDeliveryGateway):
             f"It expires in {expires_minutes} minute(s). Do not share it with anyone."
         )
 
-        client = boto3.client("ses", region_name=self._region)
-        client.send_email(
-            Source=self._from_email,
-            Destination={"ToAddresses": [message.email]},
-            Message={
-                "Subject": {"Data": subject, "Charset": "UTF-8"},
-                "Body": {"Text": {"Data": body_text, "Charset": "UTF-8"}},
-            },
-        )
         logger.info(
-            "SES OTP email sent to %s challenge=%s",
+            "SES send_email attempt: to=%s from=%s region=%s challenge=%s expires_in=%ss",
             message.email,
+            self._from_email,
+            self._region,
             message.challenge_id,
+            message.expires_in_seconds,
         )
+        try:
+            client = boto3.client("ses", region_name=self._region)
+            response = client.send_email(
+                Source=self._from_email,
+                Destination={"ToAddresses": [message.email]},
+                Message={
+                    "Subject": {"Data": subject, "Charset": "UTF-8"},
+                    "Body": {"Text": {"Data": body_text, "Charset": "UTF-8"}},
+                },
+            )
+            logger.info(
+                "SES send_email succeeded: to=%s challenge=%s message_id=%s",
+                message.email,
+                message.challenge_id,
+                response.get("MessageId"),
+            )
+        except Exception:
+            logger.exception(
+                "SES send_email failed: to=%s from=%s region=%s challenge=%s",
+                message.email,
+                self._from_email,
+                self._region,
+                message.challenge_id,
+            )
+            raise
 

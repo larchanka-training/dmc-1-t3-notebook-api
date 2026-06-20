@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     AI_PROVIDER_NAME: Literal["bedrock"] = "bedrock"
     AI_PROVIDER_MODEL: str = "anthropic.claude-3-haiku"
 
-    SES_FROM_EMAIL: str = ""
+    SES_FROM_EMAIL: str = "robo@jsnotebook.org"
     SES_REGION: str = "eu-north-1"
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
