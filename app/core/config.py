@@ -52,6 +52,7 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    GIT_BRANCH: str = "unknown"
 
     DATABASE_URL: str = "postgresql+psycopg://admin:admin123@postgres:5432/wiki"
     BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
