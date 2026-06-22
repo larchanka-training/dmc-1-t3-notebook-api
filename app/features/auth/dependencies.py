@@ -9,7 +9,11 @@ from app.features.auth.cookies import read_auth_session_cookie
 from app.features.auth.repository import AuthRepository
 from app.features.auth.service import AuthService
 from app.features.auth.schemas import UserSummary
-from app.integrations.email_delivery import LoggingOtpDeliveryGateway, OtpDeliveryGateway
+from app.integrations.email_delivery import (
+    LoggingOtpDeliveryGateway,
+    OtpDeliveryGateway,
+    SesOtpDeliveryGateway,
+)
 from app.integrations.google_oauth.client import GoogleOAuthClient
 
 
@@ -17,7 +21,14 @@ def get_auth_repository(db: AsyncSession = Depends(get_db)) -> AuthRepository:
     return AuthRepository(db)
 
 
-def get_otp_delivery_gateway() -> OtpDeliveryGateway:
+def get_otp_delivery_gateway(
+    settings: Settings = Depends(get_settings),
+) -> OtpDeliveryGateway:
+    if settings.ses_email_enabled:
+        return SesOtpDeliveryGateway(
+            from_email=settings.SES_FROM_EMAIL,
+            region=settings.SES_REGION,
+        )
     return LoggingOtpDeliveryGateway()
 
 
