@@ -45,10 +45,10 @@ class SesOtpDeliveryGateway(OtpDeliveryGateway):
             f"It expires in {expires_minutes} minute(s). Do not share it with anyone."
         )
 
-        logger.info(
-            "SES send_email attempt: to=%s from=%s region=%s challenge=%s expires_in=%ss",
-            message.email,
+        logger.warning(
+            "SES send_email attempt: FROM=%r TO=%r region=%s challenge=%s expires_in=%ss",
             self._from_email,
+            message.email,
             self._region,
             message.challenge_id,
             message.expires_in_seconds,
