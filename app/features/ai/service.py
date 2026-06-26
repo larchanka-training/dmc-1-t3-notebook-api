@@ -302,6 +302,8 @@ def build_repair_feedback(*, failure_kind: str, detail: str | None) -> str:
     parts = [
         "Return only plain JavaScript code.",
         "Do not include markdown fences, explanations, or prose.",
+        "Return one complete corrected snippet, not a diff or partial fragment.",
+        "Double-check that parentheses, braces, brackets, quotes, and template literals are balanced.",
     ]
     if failure_kind == "extraction":
         parts.append(

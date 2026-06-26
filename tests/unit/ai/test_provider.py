@@ -108,6 +108,8 @@ async def test_bedrock_gateway_includes_repair_feedback_in_request() -> None:
     assert "Repair attempt: 1" in user_message
     assert "Previous response had syntax errors." in user_message
     assert "function broken( {" in user_message
+    assert "syntactically valid JavaScript snippet" in user_message
+    assert "Previous provider response to repair" in user_message
 
 
 async def test_bedrock_gateway_maps_timeout_errors() -> None:

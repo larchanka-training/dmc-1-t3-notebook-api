@@ -59,6 +59,12 @@ Recommended first-slice transport retry baseline:
 
 - `AI_BEDROCK_MAX_RETRIES=1`
 
+Additional runtime requirement:
+
+- the API runtime image must include `node`
+- deterministic JavaScript syntax validation uses `node --check`
+- if `node` is absent, valid provider output can be misclassified as `AI_CODE_SYNTAX_INVALID`
+
 ## 4. Credential Delivery Paths
 
 ### 4.1 Local Development
