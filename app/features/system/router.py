@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.core.config import Settings, get_settings
+from app.features.ai.dependencies import get_ai_runtime_status
 
 router = APIRouter(prefix="/system", tags=["system"])
 
@@ -10,6 +11,9 @@ class HealthCheckResponse(BaseModel):
     status: str = Field(default="healthy", description="Current operational state")
     version: str = Field(..., description="Application semantic version")
     environment: str = Field(..., description="Active runtime environment tier")
+    ai: dict[str, object] = Field(
+        ..., description="Safe AI runtime readiness summary without secrets."
+    )
 
 
 @router.get(
@@ -28,4 +32,5 @@ async def perform_health_check(
         status="healthy",
         version=current_settings.VERSION,
         environment=current_settings.ENVIRONMENT,
+        ai=get_ai_runtime_status(current_settings),
     )
