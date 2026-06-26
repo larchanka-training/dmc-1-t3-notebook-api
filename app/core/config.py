@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_ERROR_REDIRECT_URL: str = "https://notebook.com:8443/auth/error"
     AI_PROVIDER_ENABLED: bool = False
     AI_PROVIDER_NAME: Literal["bedrock"] = "bedrock"
-    AI_PROVIDER_MODEL: str = "anthropic.claude-3-haiku"
+    AI_PROVIDER_MODEL: str = "deepseek.v3.2"
     AI_BEDROCK_REGION: str = ""
     AI_BEDROCK_TIMEOUT_SECONDS: float = 20.0
     AI_BEDROCK_MAX_RETRIES: int = 1

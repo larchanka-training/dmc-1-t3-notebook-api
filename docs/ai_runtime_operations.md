@@ -49,7 +49,7 @@ The backend Bedrock path requires the following application settings:
 
 Recommended first-slice model baseline:
 
-- `AI_PROVIDER_MODEL=anthropic.claude-3-haiku`
+- `AI_PROVIDER_MODEL=deepseek.v3.2`
 
 Recommended first-slice timeout baseline:
 
@@ -87,7 +87,7 @@ The application secret should contain the Bedrock runtime toggles, for example:
 ```ini
 AI_PROVIDER_ENABLED=true
 AI_PROVIDER_NAME=bedrock
-AI_PROVIDER_MODEL=anthropic.claude-3-haiku
+AI_PROVIDER_MODEL=deepseek.v3.2
 AI_BEDROCK_REGION=us-east-1
 AI_BEDROCK_TIMEOUT_SECONDS=20
 AI_BEDROCK_MAX_RETRIES=1

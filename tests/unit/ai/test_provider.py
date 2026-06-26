@@ -58,7 +58,7 @@ async def test_bedrock_gateway_maps_successful_response() -> None:
     )
     gateway = BedrockAiGenerationGateway(
         region="us-east-1",
-        model="anthropic.claude-3-haiku",
+        model="deepseek.v3.2",
         timeout_seconds=12.5,
         max_retries=2,
         client=client,
@@ -67,9 +67,9 @@ async def test_bedrock_gateway_maps_successful_response() -> None:
     response = await gateway.generate(_request())
 
     assert response.provider_name == "bedrock"
-    assert response.model == "anthropic.claude-3-haiku"
+    assert response.model == "deepseek.v3.2"
     assert response.content == "function parseTotals() {\n  return [];\n}"
-    assert client.calls[0]["modelId"] == "anthropic.claude-3-haiku"
+    assert client.calls[0]["modelId"] == "deepseek.v3.2"
     assert client.calls[0]["inferenceConfig"] == {
         "maxTokens": 4096,
         "temperature": 0,
@@ -90,7 +90,7 @@ async def test_bedrock_gateway_includes_repair_feedback_in_request() -> None:
     )
     gateway = BedrockAiGenerationGateway(
         region="us-east-1",
-        model="anthropic.claude-3-haiku",
+        model="deepseek.v3.2",
         timeout_seconds=12.5,
         max_retries=2,
         client=client,
@@ -113,7 +113,7 @@ async def test_bedrock_gateway_includes_repair_feedback_in_request() -> None:
 async def test_bedrock_gateway_maps_timeout_errors() -> None:
     gateway = BedrockAiGenerationGateway(
         region="us-east-1",
-        model="anthropic.claude-3-haiku",
+        model="deepseek.v3.2",
         timeout_seconds=12.5,
         max_retries=2,
         client=FakeBedrockClient(error=TimeoutError("slow")),
@@ -130,7 +130,7 @@ async def test_bedrock_gateway_maps_timeout_errors() -> None:
 async def test_bedrock_gateway_maps_unavailable_errors() -> None:
     gateway = BedrockAiGenerationGateway(
         region="us-east-1",
-        model="anthropic.claude-3-haiku",
+        model="deepseek.v3.2",
         timeout_seconds=12.5,
         max_retries=2,
         client=FakeBedrockClient(
@@ -149,7 +149,7 @@ async def test_bedrock_gateway_maps_unavailable_errors() -> None:
 async def test_bedrock_gateway_maps_malformed_response() -> None:
     gateway = BedrockAiGenerationGateway(
         region="us-east-1",
-        model="anthropic.claude-3-haiku",
+        model="deepseek.v3.2",
         timeout_seconds=12.5,
         max_retries=2,
         client=FakeBedrockClient(response={"unexpected": "payload"}),
@@ -166,7 +166,7 @@ async def test_bedrock_gateway_maps_malformed_response() -> None:
 def test_ai_gateway_dependency_returns_unavailable_when_runtime_is_disabled() -> None:
     settings = Settings(
         AI_PROVIDER_ENABLED=False,
-        AI_PROVIDER_MODEL="anthropic.claude-3-haiku",
+        AI_PROVIDER_MODEL="deepseek.v3.2",
         AI_BEDROCK_REGION="us-east-1",
     )
 
@@ -195,7 +195,7 @@ def test_ai_gateway_dependency_returns_bedrock_gateway_when_runtime_is_configure
     settings = Settings(
         AI_PROVIDER_ENABLED=True,
         AI_PROVIDER_NAME="bedrock",
-        AI_PROVIDER_MODEL="anthropic.claude-3-haiku",
+        AI_PROVIDER_MODEL="deepseek.v3.2",
         AI_BEDROCK_REGION="us-east-1",
         AI_BEDROCK_TIMEOUT_SECONDS=15,
         AI_BEDROCK_MAX_RETRIES=3,
@@ -206,7 +206,7 @@ def test_ai_gateway_dependency_returns_bedrock_gateway_when_runtime_is_configure
     assert isinstance(gateway, FakeGateway)
     assert captured == {
         "region": "us-east-1",
-        "model": "anthropic.claude-3-haiku",
+        "model": "deepseek.v3.2",
         "timeout_seconds": 15.0,
         "max_retries": 3,
         "provider_name": "bedrock",
@@ -217,7 +217,7 @@ def test_ai_runtime_status_reports_incomplete_config() -> None:
     settings = Settings(
         AI_PROVIDER_ENABLED=True,
         AI_PROVIDER_NAME="bedrock",
-        AI_PROVIDER_MODEL="anthropic.claude-3-haiku",
+        AI_PROVIDER_MODEL="deepseek.v3.2",
         AI_BEDROCK_REGION="",
     )
 
@@ -241,7 +241,7 @@ def test_ai_runtime_status_reports_sdk_unavailable(monkeypatch) -> None:
     settings = Settings(
         AI_PROVIDER_ENABLED=True,
         AI_PROVIDER_NAME="bedrock",
-        AI_PROVIDER_MODEL="anthropic.claude-3-haiku",
+        AI_PROVIDER_MODEL="deepseek.v3.2",
         AI_BEDROCK_REGION="us-east-1",
         AI_BEDROCK_TIMEOUT_SECONDS=15,
         AI_BEDROCK_MAX_RETRIES=3,
