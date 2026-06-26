@@ -108,6 +108,10 @@ def build_bedrock_request_text(request: AiProviderGenerateRequest) -> str:
         "Generate JavaScript code for the notebook task below.",
         "Return only plain JavaScript code.",
         "Do not include markdown fences, explanations, or prose.",
+        "Return one complete, syntactically valid JavaScript snippet.",
+        "Do not repeat the prompt or context in the output.",
+        "If the task is underspecified, return the smallest valid implementation that satisfies it.",
+        "Before responding, verify that parentheses, braces, brackets, quotes, and template literals are balanced.",
         f"Request ID: {request.request_id}",
         f"Mode: {request.mode}",
         f"Insertion strategy: {request.insertion_strategy}",
@@ -122,7 +126,7 @@ def build_bedrock_request_text(request: AiProviderGenerateRequest) -> str:
         parts.append(f"Repair feedback:\n{request.repair_feedback}")
     if request.previous_response_content:
         parts.append(
-            "Previous provider response:\n"
+            "Previous provider response to repair:\n"
             f"{request.previous_response_content}"
         )
 
@@ -173,7 +177,8 @@ class BedrockAiGenerationGateway(AiGenerationGateway):
                     {
                         "text": (
                             "You generate JavaScript for a notebook backend workflow. "
-                            "Return only plain JavaScript code."
+                            "Return only one complete, syntactically valid JavaScript snippet "
+                            "with no markdown fences, no explanations, and no surrounding prose."
                         )
                     }
                 ],

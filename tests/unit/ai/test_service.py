@@ -60,6 +60,8 @@ def test_build_repair_feedback_contains_failure_context() -> None:
     )
 
     assert "plain JavaScript code" in feedback
+    assert "complete corrected snippet" in feedback
+    assert "balanced" in feedback
     assert "syntax errors" in feedback
     assert "Unexpected token" in feedback
 
