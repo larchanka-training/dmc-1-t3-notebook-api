@@ -156,7 +156,7 @@ async def test_generate_code_block_success(
                         "  return csvText.split('\\n');\n}\n```"
                     ),
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
@@ -176,7 +176,7 @@ async def test_generate_code_block_success(
     assert body["status"] == "success"
     assert body["provider"] == {
         "name": "bedrock",
-        "model": "anthropic.claude-3-haiku",
+        "model": "deepseek.v3.2",
     }
     assert body["validation"] == {
         "extractionApplied": True,
@@ -198,7 +198,7 @@ async def test_generate_code_block_requires_authenticated_session(
                 AiProviderGenerateResponse(
                     content="function noop() {}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
@@ -224,7 +224,7 @@ async def test_generate_code_block_returns_forbidden_for_foreign_notebook(
                 AiProviderGenerateResponse(
                     content="function unreachable() {}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
@@ -254,7 +254,7 @@ async def test_generate_code_block_rejects_non_text_source_block(
                 AiProviderGenerateResponse(
                     content="function unreachable() {}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
@@ -287,7 +287,7 @@ async def test_generate_code_block_rejects_malformed_request_shape(
                 AiProviderGenerateResponse(
                     content="function unreachable() {}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
@@ -321,7 +321,7 @@ async def test_generate_code_block_rejects_non_code_prompt_before_provider_call(
                 AiProviderGenerateResponse(
                     content="function unreachable() {}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
@@ -348,7 +348,7 @@ async def test_generate_code_block_rejects_unsafe_prompt_before_provider_call(
                 AiProviderGenerateResponse(
                     content="function unreachable() {}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )
