@@ -27,6 +27,8 @@ async def test_health_check_endpoint_returns_valid_payload(
     assert payload["status"] == "healthy"
     assert payload["version"] == settings.VERSION
     assert payload["environment"] == settings.ENVIRONMENT
+    assert payload["ai"]["provider"] == settings.AI_PROVIDER_NAME
+    assert payload["ai"]["ready"] is False
 
 
 async def test_system_health_endpoint_returns_valid_payload(
@@ -41,6 +43,13 @@ async def test_system_health_endpoint_returns_valid_payload(
     assert payload["status"] == "healthy"
     assert payload["version"] == settings.VERSION
     assert payload["environment"] == settings.ENVIRONMENT
+    assert set(payload["ai"]) == {
+        "provider",
+        "configured",
+        "ready",
+        "reason",
+        "missing_fields",
+    }
 
 
 async def test_health_check_includes_cors_headers_for_allowed_origin(
