@@ -229,7 +229,7 @@ Version 1 allows only code-generation and code-revision intent for this route.
   "code": "function parseTaxes(csvText) {\n  return [];\n}",
   "provider": {
     "name": "bedrock",
-    "model": "anthropic.claude-3-haiku"
+    "model": "deepseek.v3.2"
   },
   "validation": {
     "extractionApplied": true,
@@ -353,7 +353,7 @@ Response:
   "code": "function parseTotals(csvText) {\n  return [];\n}",
   "provider": {
     "name": "bedrock",
-    "model": "anthropic.claude-3-haiku"
+    "model": "deepseek.v3.2"
   },
   "validation": {
     "extractionApplied": true,

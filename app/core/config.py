@@ -92,8 +92,12 @@ class Settings(BaseSettings):
     GOOGLE_OAUTH_REDIRECT_URI: str = "https://api.notebook.com:8443/api/v1/auth/google/callback"
     GOOGLE_OAUTH_SUCCESS_REDIRECT_URL: str = "https://notebook.com:8443/"
     GOOGLE_OAUTH_ERROR_REDIRECT_URL: str = "https://notebook.com:8443/auth/error"
+    AI_PROVIDER_ENABLED: bool = False
     AI_PROVIDER_NAME: Literal["bedrock"] = "bedrock"
-    AI_PROVIDER_MODEL: str = "anthropic.claude-3-haiku"
+    AI_PROVIDER_MODEL: str = "deepseek.v3.2"
+    AI_BEDROCK_REGION: str = ""
+    AI_BEDROCK_TIMEOUT_SECONDS: float = 20.0
+    AI_BEDROCK_MAX_RETRIES: int = 1
 
     SES_FROM_EMAIL: str = "noreply@t3.jsnb.org"
     SES_REGION: str = "eu-north-1"
@@ -103,6 +107,13 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, value: Any) -> Any:
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @field_validator("AI_BEDROCK_REGION", "AI_PROVIDER_MODEL", mode="before")
+    @classmethod
+    def strip_ai_strings(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return value.strip()
         return value
 
     @property
@@ -120,6 +131,34 @@ class Settings(BaseSettings):
     @property
     def ses_email_enabled(self) -> bool:
         return bool(self.SES_FROM_EMAIL.strip())
+
+    @property
+    def ai_bedrock_runtime_configured(self) -> bool:
+        return bool(
+            self.AI_PROVIDER_ENABLED
+            and self.AI_PROVIDER_NAME == "bedrock"
+            and self.AI_BEDROCK_REGION
+            and self.AI_PROVIDER_MODEL
+            and self.AI_BEDROCK_TIMEOUT_SECONDS > 0
+            and self.AI_BEDROCK_MAX_RETRIES >= 0
+        )
+
+    @property
+    def ai_bedrock_runtime_missing_fields(self) -> list[str]:
+        missing: list[str] = []
+        if not self.AI_PROVIDER_ENABLED:
+            missing.append("AI_PROVIDER_ENABLED")
+        if self.AI_PROVIDER_NAME != "bedrock":
+            missing.append("AI_PROVIDER_NAME")
+        if not self.AI_BEDROCK_REGION:
+            missing.append("AI_BEDROCK_REGION")
+        if not self.AI_PROVIDER_MODEL:
+            missing.append("AI_PROVIDER_MODEL")
+        if self.AI_BEDROCK_TIMEOUT_SECONDS <= 0:
+            missing.append("AI_BEDROCK_TIMEOUT_SECONDS")
+        if self.AI_BEDROCK_MAX_RETRIES < 0:
+            missing.append("AI_BEDROCK_MAX_RETRIES")
+        return missing
 
 
 settings = Settings()

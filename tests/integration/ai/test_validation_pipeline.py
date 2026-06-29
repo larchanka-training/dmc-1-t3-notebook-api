@@ -57,12 +57,12 @@ async def test_validation_pipeline_repairs_syntax_and_returns_success(
                 AiProviderGenerateResponse(
                     content="function broken( {",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 ),
                 AiProviderGenerateResponse(
                     content="function fixed() {\n  return 1;\n}",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 ),
             ]
         )
@@ -102,12 +102,12 @@ async def test_validation_pipeline_returns_extraction_failed_after_repair_exhaus
                 AiProviderGenerateResponse(
                     content="Here is an explanation without code.",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 ),
                 AiProviderGenerateResponse(
                     content="Still only prose after retry.",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 ),
             ]
         )
@@ -141,12 +141,12 @@ async def test_validation_pipeline_returns_syntax_invalid_after_repair_exhausted
                 AiProviderGenerateResponse(
                     content="function first( {",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 ),
                 AiProviderGenerateResponse(
                     content="function second( {",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 ),
             ]
         )
@@ -178,7 +178,7 @@ async def test_validation_pipeline_returns_comment_only_warning(
                 AiProviderGenerateResponse(
                     content="// This is a placeholder\n/* implement later */",
                     provider_name="bedrock",
-                    model="anthropic.claude-3-haiku",
+                    model="deepseek.v3.2",
                 )
             ]
         )

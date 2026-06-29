@@ -24,6 +24,8 @@ def get_auth_repository(db: AsyncSession = Depends(get_db)) -> AuthRepository:
 def get_otp_delivery_gateway(
     settings: Settings = Depends(get_settings),
 ) -> OtpDeliveryGateway:
+    if settings.auth_dev_otp_enabled or settings.AUTH_DEBUG_MODE:
+        return LoggingOtpDeliveryGateway()
     if settings.ses_email_enabled:
         return SesOtpDeliveryGateway(
             from_email=settings.SES_FROM_EMAIL,

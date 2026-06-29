@@ -6,6 +6,7 @@ import tempfile
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import logging
 from pathlib import Path
 
 from app.features.ai.errors import build_ai_error
@@ -25,6 +26,8 @@ from app.integrations.ai import (
     AiProviderTimeoutError,
     AiProviderUnavailableError,
 )
+
+logger = logging.getLogger("app.features.ai.service")
 
 FENCED_BLOCK_RE = re.compile(r"```([^\n`]*)\n(.*?)```", re.DOTALL)
 COMMENT_BLOCK_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -299,6 +302,8 @@ def build_repair_feedback(*, failure_kind: str, detail: str | None) -> str:
     parts = [
         "Return only plain JavaScript code.",
         "Do not include markdown fences, explanations, or prose.",
+        "Return one complete corrected snippet, not a diff or partial fragment.",
+        "Double-check that parentheses, braces, brackets, quotes, and template literals are balanced.",
     ]
     if failure_kind == "extraction":
         parts.append(
@@ -343,6 +348,13 @@ class AiService:
         self, *, owner_id: uuid.UUID, payload: AiCodeGenerateRequest
     ) -> AiCodeGenerateSuccessResponse:
         request_id = build_request_id()
+        logger.info(
+            "AI generation request started request_id=%s notebook_id=%s source_block_id=%s mode=%s",
+            request_id,
+            payload.notebook_id,
+            payload.source_block_id,
+            payload.mode,
+        )
 
         try:
             notebook_id = uuid.UUID(payload.notebook_id)
@@ -454,8 +466,22 @@ class AiService:
             repair_attempts = 1
 
         if final_attempt is None:
+            logger.warning(
+                "AI generation request failed validation pipeline request_id=%s failure_kind=%s",
+                request_id,
+                self._last_failure_kind,
+            )
             raise self._build_final_pipeline_error(request_id=request_id)
 
+        logger.info(
+            "AI generation request succeeded request_id=%s provider=%s model=%s repair_attempts=%s extraction_applied=%s warning_count=%s",
+            request_id,
+            final_response.provider_name,
+            final_response.model,
+            repair_attempts,
+            final_attempt.extraction_applied,
+            len(final_attempt.warnings),
+        )
         return AiCodeGenerateSuccessResponse(
             request_id=request_id,
             status="success",
@@ -481,6 +507,11 @@ class AiService:
         try:
             return await self.gateway.generate(provider_request)
         except AiProviderTimeoutError as exc:
+            logger.warning(
+                "AI provider timeout request_id=%s attempt=%s",
+                request_id,
+                provider_request.attempt,
+            )
             raise build_ai_error(
                 status_code=504,
                 error_code="AI_PROVIDER_TIMEOUT",
@@ -489,6 +520,11 @@ class AiService:
                 request_id=request_id,
             ) from exc
         except AiProviderUnavailableError as exc:
+            logger.warning(
+                "AI provider unavailable request_id=%s attempt=%s",
+                request_id,
+                provider_request.attempt,
+            )
             raise build_ai_error(
                 status_code=503,
                 error_code="AI_PROVIDER_UNAVAILABLE",
@@ -497,6 +533,11 @@ class AiService:
                 request_id=request_id,
             ) from exc
         except AiProviderInvalidResponseError as exc:
+            logger.warning(
+                "AI provider invalid response request_id=%s attempt=%s",
+                request_id,
+                provider_request.attempt,
+            )
             raise build_ai_error(
                 status_code=502,
                 error_code="AI_RESPONSE_INVALID",
